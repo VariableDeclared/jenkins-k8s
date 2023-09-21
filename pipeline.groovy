@@ -35,5 +35,11 @@ pipeline {
                 sh 'juju bootstrap aws/eu-west-1'
             }
         }
+        stage('Deploy Kubernetes') {
+            steps {
+                sh 'juju add-model k8s-jenkins'
+                sh 'juju deploy charmed-kubernetes'
+            }
+        }
     }
 }
