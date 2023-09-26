@@ -26,16 +26,27 @@ pipeline {
         string(name: 'GIT_REPO', defaultValue: 'https://github.com/variabledeclared/blah', description: 'Keystone URL')
     }
     stages {
+        stage('Git Checkout') {
+            checkout scmGit(branches: [[name: 'main']],
+                userRemoteConfigs: [
+                    [url: params.GIT_REPO]
+                ],
+                extensions: [ RelativeTargetDirectory: './jenkins-terraform']
+                )
+        }
+        stage('Build Openstack Environment') {
+            dir('jenkins-terraform') {
+                //todo build openstack project, juju user, relevant resources
+            }
+        }
         stage('Bootstrap juju') {
             environment {
                 NOVA_RC_BASE64 = credentials('jenkins-novarc')
             }
             steps {
                 sh 'sudo snap install juju || true'
-                checkout scmGit(branches: [[name: 'main']],
-                userRemoteConfigs: [
-                    [url: params.GIT_REPO]
-                ])
+                
+
                 sh 'mkdir -p /home/jenkins/.local/share || true'
 
                 writeFile file: CFG_PATH, text: renderTemplate(JUJU_CREDENTIAL_TEMPLATE, ['access_key': JUJU_ACCESS_KEY, 'access_secret': JUJU_ACCESS_SECRET])
