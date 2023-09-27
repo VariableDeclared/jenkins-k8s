@@ -32,14 +32,15 @@ pipeline {
                     userRemoteConfigs: [
                         [url: params.GIT_REPO]
                     ],
-                    extensions: [ RelativeTargetDirectory: './jenkins-terraform']
+                    extensions: [[$class: 'RelativeTargetDirectory', 
+                        relativeTargetDir: 'jenkins-terraform']]
                     )
             }
         }
         stage('Build Openstack Environment') {
             steps {
                 dir('jenkins-terraform') {
-                    sh 'sudo snap install terraform || true'
+                    sh 'sudo snap install terraform --classic || true'
                     sh 'terraform init || true'
                     sh 'terraform apply -auto-approve'
                     // sh './scripts/generate-jujumetadata.sh'
@@ -52,8 +53,6 @@ pipeline {
             }
             steps {
                 sh 'sudo snap install juju || true'
-                
-
                 sh 'mkdir -p /home/jenkins/.local/share || true'
 
                 writeFile file: CFG_PATH, text: renderTemplate(JUJU_CREDENTIAL_TEMPLATE, ['access_key': JUJU_ACCESS_KEY, 'access_secret': JUJU_ACCESS_SECRET])
