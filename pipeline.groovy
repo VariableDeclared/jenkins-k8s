@@ -36,7 +36,9 @@ pipeline {
         }
         stage('Build Openstack Environment') {
             dir('jenkins-terraform') {
-                //todo build openstack project, juju user, relevant resources
+                sh 'terraform init || true'
+                sh 'terraform apply -auto-approve'
+                // sh './scripts/generate-jujumetadata.sh'
             }
         }
         stage('Bootstrap juju') {
