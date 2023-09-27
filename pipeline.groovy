@@ -38,11 +38,16 @@ pipeline {
             }
         }
         stage('Build Openstack Environment') {
+            environment {
+                SSH_PUBLIC_KEY = credentials('public-ssh-key')
+            }
             steps {
                 dir('jenkins-terraform') {
                     sh 'sudo snap install terraform --classic || true'
                     sh 'terraform init || true'
+                    writeFile file: './id_rsa.pub', text: SSH_PUBLIC_KEY
                     sh 'terraform apply -auto-approve'
+                    
                     // sh './scripts/generate-jujumetadata.sh'
                 }
             }
