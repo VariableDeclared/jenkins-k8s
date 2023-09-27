@@ -27,18 +27,23 @@ pipeline {
     }
     stages {
         stage('Git Checkout') {
-            checkout scmGit(branches: [[name: 'main']],
-                userRemoteConfigs: [
-                    [url: params.GIT_REPO]
-                ],
-                extensions: [ RelativeTargetDirectory: './jenkins-terraform']
-                )
+            steps {
+                checkout scmGit(branches: [[name: 'main']],
+                    userRemoteConfigs: [
+                        [url: params.GIT_REPO]
+                    ],
+                    extensions: [ RelativeTargetDirectory: './jenkins-terraform']
+                    )
+            }
         }
         stage('Build Openstack Environment') {
-            dir('jenkins-terraform') {
-                sh 'terraform init || true'
-                sh 'terraform apply -auto-approve'
-                // sh './scripts/generate-jujumetadata.sh'
+            steps {
+                dir('jenkins-terraform') {
+                    sh 'sudo snap install terraform || true'
+                    sh 'terraform init || true'
+                    sh 'terraform apply -auto-approve'
+                    // sh './scripts/generate-jujumetadata.sh'
+                }
             }
         }
         stage('Bootstrap juju') {
