@@ -21,6 +21,7 @@ def base64Decode(encodedString){
     String decode = new String(decoded)
     return decode
 }
+// TODO: clean Teardown
 
 pipeline {
     agent any
@@ -54,9 +55,9 @@ pipeline {
                     sh 'sudo snap install terraform --classic || true'
                     sh 'terraform init -upgrade || true'
                     writeFile file: './id_rsa.pub', text: SSH_PUBLIC_KEY
-                    sh 'for domain in  Engineering Support Administration; \
-                    do openstack domain set --disable $domain; done'
-                    sh 'terraform apply -auto-approve -destroy'
+                    // sh 'for domain in  Engineering Support Administration; \
+                    // do openstack domain set --disable $domain; done'
+                    // sh 'terraform apply -auto-approve -destroy'
                     sh 'terraform apply -auto-approve'
                 // sh './scripts/generate-jujumetadata.sh'
                 }
@@ -94,8 +95,10 @@ pipeline {
         }
         stage('Deploy Kubernetes') {
             steps {
-                sh 'juju add-model k8s-jenkins'
-                sh 'juju deploy charmed-kubernetes'
+                dir('jenkins-terraform') {
+                    sh 'juju add-model k8s-jenkins'
+                    sh 'juju deploy ./micro-ck8s.yaml'
+                }
             }
         }
     }
