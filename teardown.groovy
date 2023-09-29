@@ -33,6 +33,9 @@ pipeline {
         string(name: 'GIT_REPO', defaultValue: 'https://github.com/VariableDeclared/jenkins-terraform', description: 'Git URL')
         string(name: 'O7K_USER_NAME', defaultValue: 'Alice', description: 'O7K User to be created')
         string(name: 'O7K_PASSWD', defaultValue: 'Alice', description: 'O7K User to be created')
+        string(name: 'KUBERNETES_NAME', defaultValue: 'jenkins-k8s', description: 'The name for Kubernetes')
+        string(name: 'CONTROLLER_NAME', defaultValue: 'openstack-controller', description: 'Juju controller name')
+        
     }
     stages {
         stage('Git Checkout') {
@@ -53,13 +56,10 @@ pipeline {
             steps {
                 dir('jenkins-terraform') {
                     sh 'sudo snap install terraform --classic || true'
+                    sh 'sudo snap install juju-wait --classic || true'
                     sh 'terraform init -upgrade || true'
                     writeFile file: './id_rsa.pub', text: SSH_PUBLIC_KEY
-                    // sh 'for domain in  Engineering Support Administration; \
-                    // do openstack domain set --disable $domain; done'
-                    // sh 'terraform apply -auto-approve -destroy'
                     sh 'terraform apply -auto-approve'
-                // sh './scripts/generate-jujumetadata.sh'
                 }
             }
         }
@@ -85,20 +85,37 @@ pipeline {
                     ${WORKSPACE}/novarc ${params.UBUNTU_IMAGE_ID} \
                     ${params.OS_SERIES} ${params.OPENSTACK_REGION} \
                     ${params.OPENSTACK_URL}"
-                    sh 'juju bootstrap openstack_cloud \
+                    sh "juju bootstrap openstack_cloud \
                      --metadata-source ~/simplestreams \
-                     --model-default="network=Frontend" \
-                     --model-default=external-network="ext-net"\
-                     --bootstrap-constraints="allocate-public-ip=true"'
+                     --model-default='network=Frontend' \
+                     --model-default='external-network=ext-net'\
+                     --bootstrap-constraints='allocate-public-ip=true'\
+                     ${params.CONTROLLER_NAME}"
                 }
             }
         }
         stage('Deploy Kubernetes') {
             steps {
                 dir('jenkins-terraform') {
-                    sh 'juju add-model k8s-jenkins'
+                    sh "juju add-model ${params.KUBERNETES_NAME}"
+                    // TODO: below should be a configurable bundle.
                     sh 'juju deploy ./micro-ck8s.yaml'
                 }
+            }
+        }
+        stage('Juju wait') {
+            steps {
+                dir('jenkins-terraform') {
+                    sh 'juju-wait -v'
+                }
+            }
+        }
+        stage('Copy Kubeconfig') {
+            steps {
+                sh "juju scp kubernetes-control-plane/0:~/config ./${params.KUBERNETES_NAME}.kubeconfig"
+                echo "Complete. \
+                Kubernetes configuration can be found at: \
+                ${WORKSPACE}/${params.KUBERNETES_NAME}.kubeconfig"
             }
         }
     }
@@ -106,7 +123,7 @@ pipeline {
         // Clean after build
         always {
             cleanWs(cleanWhenNotBuilt: false,
-                    deleteDirs: true,
+                    deleteDirs: false,
                     disableDeferredWipeout: true,
                     notFailBuild: true,
                     patterns: [[pattern: '.gitignore', type: 'INCLUDE'],
